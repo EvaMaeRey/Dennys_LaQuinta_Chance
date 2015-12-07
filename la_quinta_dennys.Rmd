@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 # echo off all chunks
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
 
 # load packages
 library(dplyr)
@@ -76,8 +76,10 @@ In this article we will focus on the statistical analysis and visualization of t
 We have provided two datasets (available on the Chance website) for Denny's and La Quinta that contain available location data for both chains, as of early December 2015. Both of these datasets consist of 6 columns (`Address`, `City`, `State`, `Zip`, `Longitude`, `Latitude`) with each row reflecting a distinct location of each chain within the United States. When these data were collected there were 1643 Denny's and 851 La Quinta locations available.
 
 ```{r load-data}
-dn = read.csv("data/dennys.csv", stringsAsFactors = FALSE)
-lq = read.csv("data/laquinta.csv", stringsAsFactors = FALSE)
+dn = read.csv("data/dennys.csv", stringsAsFactors = FALSE) %>% mutate(chain="Dennys")
+lq = read.csv("data/laquinta.csv", stringsAsFactors = FALSE)%>% mutate(chain="LaQuinta")
+dat=rbind(dn,lq)
+ggplot()+geom_point(data=dat,aes(Longitude,Latitude,col=chain), size=.3)
 ```
 
 ## Spatial analysis
@@ -142,7 +144,7 @@ haversine = function(long1, lat1, long2, lat2, round=3)
 }
 ```
 
-```{r nested-for-loop, eval=FALSE}
+```{r nested-for-loop}
 # Nested for loop distance calculation implementation
 
 dist = matrix(NA, nrow(dn), nrow(lq))
@@ -154,7 +156,15 @@ for(i in 1:nrow(dn))
                           lq$Longitude[j], lq$Latitude[j])
   }
 }
+
+library(matrixStats)
+d_lq=rowMins(dist)
+lq_d=colMins(dist)
 ```
+
+
+
+
 
 ```{r vectorized}
 # Vectorized distance calculation implementation
@@ -182,6 +192,7 @@ dn_lq = cbind(dist = apply(dist,1,min),
 lq_dn = cbind(dist = apply(dist,2,min), 
               lq = lq, 
               dn = dn[apply(dist,2,which.min),])
+
 ```
 
 
@@ -233,23 +244,23 @@ rbind("DN-LQ (CONUS)" = summary(dn_lq_cus$dist),
 d = rbind(data.frame(pair = "DN-LQ (CONUS)", dist = dn_lq_cus$dist),
           data.frame(pair = "LQ-DN (CONUS)", dist = lq_dn_cus$dist))
 
+hist(d$dist)
 g1 = ggplot(d, aes(x = dist)) + 
   geom_density(aes(group = pair, color = pair, fill = pair), alpha = 0.3, na.rm=TRUE) + 
-  xlab("Distance (km)") + 
-  ylab("Density") +
-  xlim(0,100)
+  xlab("Distance (km)") +# +scale_x_log10()+
+  ylab("Density") + xlim(0,300)
   
 g2 = ggplot(d, aes(x = dist, color = pair)) + 
   stat_ecdf() + 
-  xlab("Distance (km)") + xlim(0,100) +
-  ylab("ECDF") 
+  xlab("Distance (km)")+ #+ xlim(0,1000)+
+  ylab("ECDF")+ xlim(0,300)
 
 grid.arrange(g1, g2, nrow = 2)
 ```
 
 In the blog post John Reiser was able to find several pairs of Denny's and La Quintas that are next to each other, and hence partially "confirm" the joke. We can use our data in the same way, but as good statisticians, we like to look at the entire distribution. We like to leave this as an open ended task for the students, however two good examples of this type of analysis are density estimation of the distribution and empirical cumulative distributions. From these we can answer questions like how many Denny's are within 50 meters of a La Quinta. which happens to be 13. We can just as easily ask how many are within 1 kilometer, which happens to be 189 for Denny's to La Quinta, and 188 for La Quinta to Denny's. We can also easily address quantiles of the distance distribution, which tell us that 50% of Denny's have a La Quinta within 5 kilometers, which is also true of La Quintas.
 
-```{r dist-findings, eval=FALSE}
+```{r dist-findings}
 # 50 meters
 sum(dn_lq$dist < 0.05)
 sum(dn_lq$dist < 0.05)
@@ -262,6 +273,106 @@ sum(dn_lq$dist < 1)
 quantile(lq_dn$dist, probs = 0.50)
 quantile(lq_dn$dist, probs = 0.50)
 ```
+
+# Do the same but for random draw
+```{r}
+library(rgdal)
+# https://rstudio-pubs-static.s3.amazonaws.com/200263_e77d00d6b6b24aa8890c8c4f074bcdff.html
+x <- readOGR("../states_21basic/states.shp")
+# Continental US
+NumContinentalUSDennys=nrow(dn[dn$State!="AK"&dn$State!="HI",])
+NumContinentalUSLaQuinta=nrow(lq[lq$State!="AK"&lq$State!="HI",])
+
+x=x[x$STATE_NAME!="Alaska"&x$STATE_NAME!="Hawaii",]
+# https://www.arcgis.com/home/item.html?id=f7f805eb65eb4ab787a0a3e1116ca7e5
+
+# randomly place select location for each location
+RDennys=spsample(x, n=NumContinentalUSDennys, type='random')
+RLaQuinta=spsample(x, n=NumContinentalUSLaQuinta, type='random')
+RDennys=as.data.frame(RDennys) %>% mutate(chain="Denny's")
+RLaQuinta=as.data.frame(RLaQuinta) %>% mutate(chain="LaQuinta")
+names(RDennys)[1:2]=c("Longitude","Latitude")
+names(RLaQuinta)[1:2]=c("Longitude","Latitude")
+
+df=bind_rows(RDennys,RLaQuinta)
+df$id=1:nrow(df)
+plot(x) ; points(df, col=ifelse(df$chain=="Denny's","red", "blue"), pch="x", cex=.5)
+```
+
+```{r nested-for-loop-w-random}
+# Nested for loop distance calculation implementation
+
+Rdist = matrix(NA, nrow(RDennys), nrow(RLaQuinta))
+for(i in 1:nrow(RDennys))
+{
+  for(j in 1:nrow(RLaQuinta))
+  {
+    Rdist[i,j] = haversine(RDennys$Longitude[i], RDennys$Latitude[i],
+                          RLaQuinta$Longitude[j], RLaQuinta$Latitude[j])
+  }
+}
+```
+
+### Calculate min distances
+```{r}
+library(matrixStats)
+rdn_lq=data_frame(dist=rowMins(Rdist))
+rlq_dn=data_frame(dist=colMins(Rdist))
+
+
+```
+
+### Exploring the distance distributions
+
+Our next goal is to understand the distribution of these distances. A quick look at numerical summaries can provide some preliminary insight into the data:
+
+```{r Rdist-summary-all, tab.cap="Summary of Denny's-La Quinta and La Quinta-Denny's distances."}
+rbind("DN-LQ"=summary(rdn_lq$dist),
+      "LQ-DN"=summary(rlq_dn$dist))
+```
+
+We started with just continential, so just renaming
+
+```{r rdist-summary-cus, tab.cap="Summary of Denny's-La Quinta and La Quinta-Denny's distances for the continental US."}
+rdn_lq_cus = rdn_lq
+rlq_dn_cus = rlq_dn
+```
+
+
+```{r rplot-dist-density, fig.height=6, fig.cap=fcap("Distribution of Denny's-La Quinta and La Quinta-Denny's distances for the continental US.")}
+d = rbind(data.frame(pair = "DN-LQ (CONUS)", dist = rdn_lq_cus$dist),
+          data.frame(pair = "LQ-DN (CONUS)", dist = rlq_dn_cus$dist))
+
+g1 = ggplot(d, aes(x = dist)) + 
+  geom_density(aes(group = pair, color = pair, fill = pair), alpha = 0.3, na.rm=TRUE) + 
+  xlab("Distance (km)") + 
+  ylab("Density") + xlim(0,300)
+  
+g2 = ggplot(d, aes(x = dist, color = pair)) + 
+  stat_ecdf() + 
+  xlab("Distance (km)") +
+  ylab("ECDF") + xlim(0,300)#+scale_x_log10()
+
+grid.arrange(g1, g2, nrow = 2)
+```
+
+In the blog post John Reiser was able to find several pairs of Denny's and La Quintas that are next to each other, and hence partially "confirm" the joke. We can use our data in the same way, but as good statisticians, we like to look at the entire distribution. We like to leave this as an open ended task for the students, however two good examples of this type of analysis are density estimation of the distribution and empirical cumulative distributions. From these we can answer questions like how many Denny's are within 50 meters of a La Quinta. which happens to be 13. We can just as easily ask how many are within 1 kilometer, which happens to be 189 for Denny's to La Quinta, and 188 for La Quinta to Denny's. We can also easily address quantiles of the distance distribution, which tell us that 50% of Denny's have a La Quinta within 5 kilometers, which is also true of La Quintas.
+
+```{r rdist-findings}
+# 50 meters
+sum(rdn_lq$dist < 0.05)
+sum(rdn_lq$dist < 0.05)
+
+# 1 kilometer
+sum(rdn_lq$dist < 1)
+sum(rdn_lq$dist < 1)
+
+# 50th percentile
+quantile(rlq_dn$dist, probs = 0.50)
+quantile(rlq_dn$dist, probs = 0.50)
+```
+
+
 
 
 ## Data collection
