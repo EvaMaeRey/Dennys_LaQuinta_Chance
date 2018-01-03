@@ -386,11 +386,11 @@ Rg1 = ggplot() +
   xlab("Distance (km)") + 
   ylab("Density") + xlim(0,300)
   
-Rg1 = Rg1 + geom_density(data = Rd, aes(x = dist, group = pair, color = pair, fill = pair), alpha = 0.3, na.rm=TRUE) + ggtitle("Random placement")
+Rg1 = Rg1 + geom_density(data = Rd, aes(x = dist, group = pair, color = pair, fill = pair), alpha = 0.3, na.rm=TRUE) + ggtitle("Random Placement in Continental U.S.")
 
 Rg2 = ggplot(Rd, aes(x = dist, color = pair)) + 
   xlab("Distance (km)") +
-  ylab("ECDF") + xlim(0,300) + ggtitle("Random placement")#+scale_x_log10()
+  ylab("ECDF") + xlim(0,300) + ggtitle("Random Placement in Continental U.S.")#+scale_x_log10()
 
 Rg2 = Rg2 + stat_ecdf(data = Rd, aes(x = dist))
 
@@ -428,7 +428,7 @@ step_3_min_distance()
 # step_4_summary_stats()
 step_5_rename_step()
 step_6_final_data_frame()
-step_7_plot()
+step_7_plot() 
 ```
 
 
