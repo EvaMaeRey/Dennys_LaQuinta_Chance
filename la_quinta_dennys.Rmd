@@ -248,12 +248,12 @@ hist(d$dist)
 g1 = ggplot(d, aes(x = dist)) + 
   geom_density(aes(group = pair, color = pair, fill = pair), alpha = 0.3, na.rm=TRUE) + 
   xlab("Distance (km)") +# +scale_x_log10()+
-  ylab("Density") + xlim(0,300) + ggtitle("real Dennys/La Quinta Positions")
+  ylab("Density") + xlim(0,300) + ggtitle("Real Dennys/La Quinta Positions")
   
 g2 = ggplot(d, aes(x = dist, color = pair)) + 
   stat_ecdf() + 
   xlab("Distance (km)")+ #+ xlim(0,1000)+
-  ylab("ECDF")+ xlim(0,300) + ggtitle("real Dennys/La Quinta Positions")
+  ylab("ECDF")+ xlim(0,300) + ggtitle("Real Dennys/La Quinta Positions")
 
 grid.arrange(g1, g2, nrow = 2)
 ```
@@ -381,7 +381,7 @@ step_6_final_data_frame()
 
 # Graph one realization of random position.
 ```{r}
-step_7_plot <- function(){
+step_7_plot <- function(){  
 Rg1 = ggplot() + 
   xlab("Distance (km)") + 
   ylab("Density") + xlim(0,300)
@@ -394,7 +394,8 @@ Rg2 = ggplot(Rd, aes(x = dist, color = pair)) +
 
 Rg2 = Rg2 + stat_ecdf(data = Rd, aes(x = dist))
 
-grid.arrange(g1, g2 ,Rg1, Rg2, nrow = 2)
+grid.arrange(g1, Rg1, nrow = 2)
+grid.arrange(g2, Rg2, nrow = 2)
 }
 step_7_plot()
 ```
@@ -403,7 +404,7 @@ step_7_plot()
 ```{r}
 step_1_random_placement()
 step_2_calc_distances()
-step_3_min_distance()
+step_3_min_distance() 
 # step_4_summary_stats()
 step_5_rename_step()
 step_6_final_data_frame()
@@ -415,7 +416,7 @@ step_1_random_placement()
 step_2_calc_distances()
 step_3_min_distance()
 # step_4_summary_stats()
-step_5_rename_step()
+step_5_rename_step() 
 step_6_final_data_frame()
 step_7_plot()
 ```
@@ -433,9 +434,6 @@ step_7_plot()
 
 In the blog post John Reiser was able to find several pairs of Denny's and La Quintas that are next to each other, and hence partially "confirm" the joke. We can use our data in the same way, but as good statisticians, we like to look at the entire distribution. We like to leave this as an open ended task for the students, however two good examples of this type of analysis are density estimation of the distribution and empirical cumulative distributions. From these we can answer questions like how many Denny's are within 50 meters of a La Quinta. which happens to be 13. We can just as easily ask how many are within 1 kilometer, which happens to be 189 for Denny's to La Quinta, and 188 for La Quinta to Denny's. We can also easily address quantiles of the distance distribution, which tell us that 50% of Denny's have a La Quinta within 5 kilometers, which is also true of La Quintas.
 
-```{r rdist-findings}
-
-```
 
 
 
